@@ -88,7 +88,7 @@ The metaRAG FastAPI Server offers the following key capabilities:
 
 ## Prerequisites
 
-Before running the server, you need to have the following installed and configured:
+Before running metaRAG server, you need to have installed Ollama and the models:
 
 1.  **Ollama:** Download and install Ollama from [https://ollama.ai/download](https://ollama.ai/download).
 2.  **Ollama Models:** Pull the language models required by the application. The default configuration uses:
@@ -375,10 +375,4 @@ Example Response (Answer will vary based on context retrieval and LLM):
 ├── metaRAG.py          # The main FastAPI application and metaRAG logic
 ├── requirements.txt    # Python dependencies
 └── metaRAG_db/         # Default directory for ChromaDB persistence (created automatically)
-```
-
-## License
-
-This project is typically licensed under the [MIT License](LICENSE). See the `LICENSE` file for details. *(You might need to create a `LICENSE` file if one doesn't exist)*
-
 ```
