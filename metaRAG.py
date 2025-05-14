@@ -30,9 +30,6 @@ CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./metaRAG_db")
 OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST", None)
 RAG_COLLECTION_NAME = os.getenv("RAG_COLLECTION_NAME", "metaRAG_collection")
 
-#global rag_system_instance: to be initialized later in lifespan definition
-rag_system_instance: Optional[metaRAG] = None
-
 class metaRAG_BaseDocument_Metadata(BaseModel):
     user_id: str = Field(..., description="The ID of the user uploading or querying the document.")
     language: str = Field(..., description="The language code (e.g., 'en', 'it') of the document content.")
@@ -512,6 +509,9 @@ Answer ({language}):
         except Exception as e:
             print(f"[User: {user_id}] metaRAG ERROR: LLM inference error with '{llm_model}' (lang: {language}): {e}")
             raise RuntimeError(f"LLM inference error with '{llm_model}' (lang: {language})") from e
+
+#global rag_system_instance: to be initialized later in lifespan definition
+rag_system_instance: Optional[metaRAG] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
