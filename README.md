@@ -167,6 +167,10 @@ Make sure your virtual environment is activated and dependencies are installed.
 The recommended way to run the FastAPI application using `uvicorn` is from the command line:
 
 ```bash
+# Set environment variables if needed (example for Linux/macOS)
+# export CHROMA_DB_PATH="./metaRAG_db"
+# export OLLAMA_API_HOST="http://localhost:11434"
+
 # Run the server
 uvicorn metaRAG:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -182,7 +186,7 @@ The code also includes a section `__main__` that allows running the server progr
 ```bash
 python metaRAG.py
 ```
-*(Note: The `--reload` flag does not work as expected when running this way programmatically)*
+*(Note: The `--reload` flag does not work when running this way programmatically)*
 
 The server should start and print messages to the console, including the initialization status of ChromaDB and Ollama. If metaRAG initialization fails (e.g., cannot connect to Ollama or missing models), the API will return `503 Service Unavailable` errors.
 
