@@ -12,7 +12,7 @@ This project implements a Retrieval Augmented Generation (RAG) system exposed as
 
 The fundamental problem addressed is the need for personalized AI interactions based on specific, often private, data. By integrating vector databases with LLMs, RAG systems overcome the limitations of base LLMs (which only know what they were trained on) and knowledge cutoff dates, allowing them to provide accurate, up-to-date, and source-attributable answers grounded in specific documents. This implementation further enhances this by incorporating **metadata filtering**, ensuring queries are scoped to specific users or categories of documents.
 
-**metaRAG** is built based on::
+**metaRAG** is built on:
 
 1.  **FastAPI:** Serves as the high-performance web framework for building the API. It provides the structure for defining endpoints (`/upload/text`, `/upload/file`, `/ask`, `/health`), handling HTTP requests, and managing the response cycle. Its asynchronous capabilities (`async def`) allow it to handle multiple requests efficiently. FastAPI also automatically generates interactive API documentation (`Swagger UI` and `ReDoc`) based on the code structure and Pydantic models.
 2.  **Pydantic:** Integrated seamlessly with FastAPI, Pydantic is used for defining clear data models (`BaseDocumentMetadata`, `TextUploadRequest`, `AskRequest`, `ApiResponse`, `AskResponseData`, `ContextItem`) for request and response bodies. This ensures automatic data validation, serialization, and helps FastAPI generate accurate OpenAPI documentation. It enforces that required fields, like `user_id` and `language` in metadata, are present and correctly typed.
