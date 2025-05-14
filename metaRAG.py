@@ -66,7 +66,6 @@ class metaRAG_Api_Response(BaseModel):
     message: Optional[str] = None
     data: Optional[Any] = None
 
-#Pydantic models for structured Ask response
 class metaRAG_ContextItem(BaseModel):
     text: str = Field(..., description="The text content of the retrieved context chunk.")
     metadata: Dict[str, Any] = Field(..., 
