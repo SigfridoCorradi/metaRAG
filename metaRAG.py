@@ -30,6 +30,7 @@ CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./metaRAG_db")
 OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST", None)
 RAG_COLLECTION_NAME = os.getenv("RAG_COLLECTION_NAME", "metaRAG_collection")
 
+#Pydantic models
 class metaRAG_BaseDocument_Metadata(BaseModel):
     user_id: str = Field(..., description="The ID of the user uploading or querying the document.")
     language: str = Field(..., description="The language code (e.g., 'en', 'it') of the document content.")
