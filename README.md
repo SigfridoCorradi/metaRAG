@@ -14,71 +14,7 @@ The **metaRAG** implementation make metadata core in the process: by integrating
 
 Beyond mandatory fields like `user_id` (essential for data isolation) and `language` (for language-specific model selection), the system allows adding *any* custom key-value pairs to describe your data: be it `topic`, `project`, `department`, `date`, `source_type`, `internal_code` or any other attribute relevant to your use case. This custom metadata isn't merely descriptive: it's actively used for filtering during the retrieval phase.
 
-This use of metadata enables **precise contextual filterinimport chromadb
-import ollama
-import os
-from pathlib import Path
-from typing import List, Dict, Optional, Any, Tuple, Union
-import time
-import shutil
-import tempfile
-import json
-from pypdf import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from pydantic import BaseModel, Field, model_validator
-from contextlib import asynccontextmanager
-
-#Default Model Configuration
-DEFAULT_LANGUAGE_MODELS = {
-    "en": {
-        "embedding": "nomic-embed-text:137m-v1.5-fp16",
-        "llm": "llama3:8b"
-    },
-    "it": {
-        "embedding": "granite-embedding:278m",
-        "llm": "mistral-nemo:12b"
-    }
-}
-
-#FastAPI Setup
-CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./metaRAG_db")
-OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST", None)
-RAG_COLLECTION_NAME = os.getenv("RAG_COLLECTION_NAME", "metaRAG_collection")
-
-#Pydantic models
-class PydanticModel_BaseDocument_Metadata(BaseModel):
-    user_id: str = Field(..., description="The ID of the user uploading or querying the document.")
-    language: str = Field(..., description="The language code (e.g., 'en', 'it') of the document content.")
-    model_config = {
-        "extra": "allow"
-    }
-
-class PydanticModel_TextUpload_Request(BaseModel):
-    text_content: str = Field(..., description="The plain text content to upload.")
-    document_metadata: mPydanticModel_BaseDocument_Metadata = Field(..., 
-                                                    description="Metadata associated with the text, must include user_id and language.", 
-                                                    examples=[{
-                                                        "user_id": "test_user_id",
-                                                        "language": "it",
-                                                        "topic": "test topic value"
-                                                        }]
-                                                    )
-    source_identifier: str = Field("direct_text_upload", description="A string to identify the source of this text, used as 'source_filename' in metadata.")
-
-class PydanticModel_Ask_Request(BaseModel):
-    query: str = Field(..., description="The question to ask the RAG system.")
-    query_metadata_filter: PydanticModel_BaseDocument_Metadata = Field(..., 
-                                                        description="Metadata associated with the text, must include user_id and language.",
-                                                        examples=[{
-                                                            "user_id": "test_user_id",
-                                                            "language": "it",
-                                                            "topic": "test topic value"
-                                                            }]
-                                                        )
-    n_results_for_context: int = Field(3, description="Number of context chunks to retrieve.", gt=0)
-
-g**. When the user asks a query through the API, it provides not only the query but also a metadata filter: the system then performs a vector search *only* within the subset of documents (or document chunks) that precisely match *all* criteria in your filter. This guarantees that:
+This use of metadata enables **precise contextual filterinimport chromadb**. When the user asks a query through the API, it provides not only the query but also a metadata filter: the system then performs a vector search *only* within the subset of documents (or document chunks) that precisely match *all* criteria in your filter. This guarantees that:
 
 1.  **Data Segregation**: User data remains separate and inaccessible to queries from other users unless explicitly allowed by the filter.
 2.  **Targeted Retrieval**: Queries are scoped to the exact set of relevant documents defined.
