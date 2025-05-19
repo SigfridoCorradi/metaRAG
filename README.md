@@ -14,7 +14,71 @@ The **metaRAG** implementation make metadata core in the process: by integrating
 
 Beyond mandatory fields like `user_id` (essential for data isolation) and `language` (for language-specific model selection), the system allows adding *any* custom key-value pairs to describe your data: be it `topic`, `project`, `department`, `date`, `source_type`, `internal_code` or any other attribute relevant to your use case. This custom metadata isn't merely descriptive: it's actively used for filtering during the retrieval phase.
 
-This use of metadata enables **precise contextual filtering**. When the user asks a query through the API, it provides not only the query but also a metadata filter: the system then performs a vector search *only* within the subset of documents (or document chunks) that precisely match *all* criteria in your filter. This guarantees that:
+This use of metadata enables **precise contextual filterinimport chromadb
+import ollama
+import os
+from pathlib import Path
+from typing import List, Dict, Optional, Any, Tuple, Union
+import time
+import shutil
+import tempfile
+import json
+from pypdf import PdfReader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from pydantic import BaseModel, Field, model_validator
+from contextlib import asynccontextmanager
+
+#Default Model Configuration
+DEFAULT_LANGUAGE_MODELS = {
+    "en": {
+        "embedding": "nomic-embed-text:137m-v1.5-fp16",
+        "llm": "llama3:8b"
+    },
+    "it": {
+        "embedding": "granite-embedding:278m",
+        "llm": "mistral-nemo:12b"
+    }
+}
+
+#FastAPI Setup
+CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./metaRAG_db")
+OLLAMA_API_HOST = os.getenv("OLLAMA_API_HOST", None)
+RAG_COLLECTION_NAME = os.getenv("RAG_COLLECTION_NAME", "metaRAG_collection")
+
+#Pydantic models
+class PydanticModel_BaseDocument_Metadata(BaseModel):
+    user_id: str = Field(..., description="The ID of the user uploading or querying the document.")
+    language: str = Field(..., description="The language code (e.g., 'en', 'it') of the document content.")
+    model_config = {
+        "extra": "allow"
+    }
+
+class PydanticModel_TextUpload_Request(BaseModel):
+    text_content: str = Field(..., description="The plain text content to upload.")
+    document_metadata: mPydanticModel_BaseDocument_Metadata = Field(..., 
+                                                    description="Metadata associated with the text, must include user_id and language.", 
+                                                    examples=[{
+                                                        "user_id": "test_user_id",
+                                                        "language": "it",
+                                                        "topic": "test topic value"
+                                                        }]
+                                                    )
+    source_identifier: str = Field("direct_text_upload", description="A string to identify the source of this text, used as 'source_filename' in metadata.")
+
+class PydanticModel_Ask_Request(BaseModel):
+    query: str = Field(..., description="The question to ask the RAG system.")
+    query_metadata_filter: PydanticModel_BaseDocument_Metadata = Field(..., 
+                                                        description="Metadata associated with the text, must include user_id and language.",
+                                                        examples=[{
+                                                            "user_id": "test_user_id",
+                                                            "language": "it",
+                                                            "topic": "test topic value"
+                                                            }]
+                                                        )
+    n_results_for_context: int = Field(3, description="Number of context chunks to retrieve.", gt=0)
+
+g**. When the user asks a query through the API, it provides not only the query but also a metadata filter: the system then performs a vector search *only* within the subset of documents (or document chunks) that precisely match *all* criteria in your filter. This guarantees that:
 
 1.  **Data Segregation**: User data remains separate and inaccessible to queries from other users unless explicitly allowed by the filter.
 2.  **Targeted Retrieval**: Queries are scoped to the exact set of relevant documents defined.
@@ -22,7 +86,7 @@ This use of metadata enables **precise contextual filtering**. When the user ask
 This **metaRAG** project is built on:
 
 1.  **FastAPI**: It provides the endpoints (`/upload/text`, `/upload/file`, `/ask`, `/health`), handle HTTP requests, and manage the response cycle. Its asynchronous capabilities (`async def`) allow it to handle multiple requests efficiently. FastAPI also automatically generates interactive API documentation (`Swagger UI` and `ReDoc`) based on the code structure and Pydantic models.
-2.  **Pydantic**: Integrated seamlessly with FastAPI, Pydantic is used for defining clear data models (`metaRAG_BaseDocument_Metadata`, `metaRAG_TextUpload_Request`, `metaRAG_Ask_Request`, `metaRAG_Api_Response`, `metaRAG_AskResponse_Data`, `metaRAG_ContextItem`) for request and response bodies. This ensures automatic data validation, serialization, and helps FastAPI generate accurate OpenAPI documentation. It enforces that required fields, like `user_id` and `language` in metadata, are present and correctly typed.
+2.  **Pydantic**: Integrated seamlessly with FastAPI, Pydantic is used for defining clear data models (`PydanticModel_BaseDocument_Metadata`, `PydanticModel_TextUpload_Request`, `PydanticModel_Ask_Request`, `PydanticModel_Api_Response`, `PydanticModel_AskResponse_Data`, `PydanticModel_ContextItem`) for request and response bodies. This ensures automatic data validation, serialization, and helps FastAPI generate accurate OpenAPI documentation. It enforces that required fields, like `user_id` and `language` in metadata, are present and correctly typed.
 3.  **ChromaDB**: This acts as the persistent vector store: it's responsible for storing the numerical representations (embeddings) of document chunks, along with their original text content and associated metadata. During a query, ChromaDB efficiently searches for embeddings similar to the query embedding and, crucially, applies the specified metadata filters (`user_metadata_filter`) to retrieve only relevant chunks from the user's permitted data subset.
 4.  **Ollama:** This serves as the engine for running various Language Models. It provides APIs to generate document and query embeddings using dedicated embedding models (like `nomic-embed-text` or `granite-embedding` in the default example) and to generate text answers using larger LLMs (like `llama3` or `mistral-nemo`). The application interacts with Ollama via its Python client library. The configuration allows specifying different embedding and LLM models based on the document/query language (by the *DEFAULT_LANGUAGE_MODELS -> language -> embedding* value).
 5.  **Langchain Text Splitters**: A library used to break down large pieces of text (from documents or direct text input) into smaller, fixed-size `chunks`. This is essential because embedding models, and in general RAG systems, perform better with smaller, self-contained pieces of information. The `RecursiveCharacterTextSplitter` is used here to split text while maintaining context where possible.
@@ -41,7 +105,7 @@ This **metaRAG** project is built on:
         *   For each chunk, the `ollama` client is called to generate an embedding using the appropriate language-specific model (determined by the metadata's `language`).
         *   The chunk's text, its embedding, and the document's metadata (including the user-provided fields and system-added `source_filename`) are added to the `ChromaDB` collection using the `ChromaDB` client. Metadata values that are complex Python types (like dicts or lists) are automatically serialized to JSON strings before storage.
 *   **Query Workflow (`/ask`)**:
-    *   FastAPI receives the query and uses Pydantic (`metaRAG_Ask_Request`) to validate the input, including the query string and the mandatory `query_metadata_filter`.
+    *   FastAPI receives the query and uses Pydantic (`PydanticModel_Ask_Request`) to validate the input, including the query string and the mandatory `query_metadata_filter`.
     *   The request handler passes the validated data to the `metaRAG.ask` method.
     *   Inside `metaRAG.ask`:
         *   The `ollama` client generates an embedding for the user's query using the language-specific embedding model matching the filter's `language`.
@@ -49,7 +113,7 @@ This **metaRAG** project is built on:
         *   ChromaDB returns the most similar document chunks matching the filter.
         *   The text content of the retrieved chunks is compiled into a single context string.
         *   The `ollama` client is called again, this time with the language-specific LLM, providing the compiled context and the original query. The LLM then generates a response based *only* the context provided.
-        *   The generated answer and the details of the retrieved context items (including their deserialized metadata) are structured into the `metaRAG_AskResponse_Data` Pydantic model, wrapped in an `metaRAG_Ask_Api_Response`, and returned by the FastAPI endpoint.
+        *   The generated answer and the details of the retrieved context items (including their deserialized metadata) are structured into the `PydanticModel_AskResponse_Data` Pydantic model, wrapped in an `PydanticModel_Ask_Api_Response`, and returned by the FastAPI endpoint.
 
 ## Features
 
@@ -57,13 +121,13 @@ This RAG implementation has the following key capabilities:
 
 *   **Document and Text Ingestion**:
     *   Provides FastAPI API endpoints (`/upload/text/` and `/upload/file/`) to get data into the RAG system: plain text or upload PDF and TX for populating the knowledge base with the documents you want to query.
-    *   For files: the code temporarily saves the file and uses `pypdf` (for PDFs) or standard file reading (for TXT) to extract the raw text content. This text content is then passed down the ingestion pipeline. Pydantic models (`metaRAG_TextUpload_Request`, `metaRAG_BaseDocument_Metadata`) ensure the incoming data format is correct.
+    *   For files: the code temporarily saves the file and uses `pypdf` (for PDFs) or standard file reading (for TXT) to extract the raw text content. This text content is then passed down the ingestion pipeline. Pydantic models (`PydanticModel_TextUpload_Request`, `PydanticModel_BaseDocument_Metadata`) ensure the incoming data format is correct.
 *   **Automatic Chunking**:
     *   Automatically breaks down long text content (from uploads) into smaller, more manageable segments called "chunks": LLM context windows are limited, and smaller chunks allow the vector database to find more precise relevant pieces of information during retrieval. Overlap between chunks helps ensure that context isn't lost at the boundaries of the split.
     *   The `metaRAG` class uses `langchain_text_splitters.RecursiveCharacterTextSplitter` configured with a specific `chunk_size` and `chunk_overlap`. After text extraction (for files) or receiving the raw text, the `split_text` method is called to generate the list of chunks.
 *   **Rich Metadata Handling and Filtering**:
     *   Allows associating custom key-value metadata (e.g., `user_id` [mandatory], `language` [mandatory], `topic`, `project`, `date`, etc.) with each document during upload. This metadata is stored alongside the document chunks. Query operations can include metadata filters to retrieve context only from relevant documents. This is essential for multi-tenancy (isolating one user's data from another's), categorizing documents, and refining query results. Mandatory `user_id` and `language` fields ensure data segregation and enable language-specific model selection.
-    *   The `metaRAG_BaseDocument_Metadata` Pydantic model allows for `extra="allow"`, meaning you can include any custom fields beyond the required `user_id` and `language`. During ingestion (`_process_and_store_chunks`), this metadata is stored with each chunk in ChromaDB. During querying (`_retrieve_context`), the `query_metadata_filter` (also based on `metaRAG_BaseDocument_Metadata`) is translated into ChromaDB's `where` filter condition, ensuring searches are limited to chunks matching *all* specified criteria. The `_serialize_metadata_values` method handles converting complex Python objects in metadata to ChromaDB-compatible types (JSON strings).
+    *   The `PydanticModel_BaseDocument_Metadata` Pydantic model allows for `extra="allow"`, meaning you can include any custom fields beyond the required `user_id` and `language`. During ingestion (`_process_and_store_chunks`), this metadata is stored with each chunk in ChromaDB. During querying (`_retrieve_context`), the `query_metadata_filter` (also based on `PydanticModel_BaseDocument_Metadata`) is translated into ChromaDB's `where` filter condition, ensuring searches are limited to chunks matching *all* specified criteria. The `_serialize_metadata_values` method handles converting complex Python objects in metadata to ChromaDB-compatible types (JSON strings).
 *   **Vector Embedding Generation**:
     *   Converts the text chunks (during ingestion) and the user's query (during retrieval) into high-dimensional numerical vectors (embeddings): embeddings capture the semantic meaning of the text. By converting text into vectors, ChromaDB can use mathematical operations (calculating cosine similarity) to find text segments with similar meanings, regardless of exact keyword matches.
       * What is *cosine similarity* in this context?
@@ -92,7 +156,7 @@ This RAG implementation has the following key capabilities:
     *   This project uses `chromadb.PersistentClient` to implement it. The `metaRAG` instance connects to a persistent collection (defaulting to `./metaRAG_db/metaRAG_collection`) and the `_process_and_store_chunks` method uses the `collection.add()` method to store the chunks, embeddings, and metadata.
 *   **Metadata contextual retrieval**:
     *   Given a user query and metadata filters, metaRAG (via ChromaDB) searches inside the vector database to find the most semantically relevant document chunks that also match the specified metadata. Combining vector similarity (done by ChromaDB) with precise metadata filtering ensures both semantic relevance *and* adherence to constraints like user access.
-    *   The `_retrieve_context` method takes the query embedding and the `query_metadata_filter_dict`: it calls `self.collection.query()`, passing the query embedding, the desired number of results (`n_results`), and constructing ChromaDB's `where` filter from the provided metadata dictionary. The returned `documents`, `metadatas`, and `distances` are then structured into `metaRAG_ContextItem` Pydantic models.
+    *   The `_retrieve_context` method takes the query embedding and the `query_metadata_filter_dict`: it calls `self.collection.query()`, passing the query embedding, the desired number of results (`n_results`), and constructing ChromaDB's `where` filter from the provided metadata dictionary. The returned `documents`, `metadatas`, and `distances` are then structured into `PydanticModel_ContextItem` Pydantic models.
 *   **Use of the Language Model (LLM)**:
     *   The defined LLM acts as the *reasoning* and *text generation* minimizing the risk of hallucination thanks to text chunks from ChromaDB.
     *   The `ask` method takes the retrieved context items (from ChromaDB) and the user query. It selects the appropriate *LLM model* using `_get_models_for_language` based on the filter's language (defined into *DEFAULT_LANGUAGE_MODELS -> language -> embedding* value). The LLM's prompt is constructed using a `prompt_template` that explicitly instructs the LLM to answer based *only* on the provided context: this prompt is sent to the Ollama service via `ollama_client.chat()`, and the LLM's response is extracted as the final answer.
