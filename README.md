@@ -395,6 +395,118 @@ Example Response (Answer will vary based on context retrieval and LLM):
   }
 }
 ```
+## Usage Examples (using `PHP`)
+
+### 1. Health Check
+
+```
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'http://localhost:8000t/health/');
+curl_setopt($ch, CURLOPT_HTTPGET, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+
+$result_mst = curl_exec($ch);
+$statusCode = curl_getinfo($ch);
+
+if($result_mst['status'] == "success" && $statusCode['http_code'] == 200) {
+     echo "Success!";
+}
+```
+
+### 2. Upload Text
+
+```
+$params = [
+     "text_content" => "text information to be embedded and stored into ChromaDB",
+     "document_metadata" => [
+         "language" => "it",
+         "user_id" => "Sigfrido",
+         "internal_custiom_code" => "123456",
+         "another_code" => "123456"
+     ],
+     "source_identifier" => "direct_text_upload"
+ ];
+
+$postdata_to_be_sended = json_encode($params, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'http://localhost:8000/upload/text/');
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $postdata_to_be_sended);
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+
+$result_mst = curl_exec($ch);
+$statusCode = curl_getinfo($ch);
+
+if($result_mst['status'] == "success" && $statusCode['http_code'] == 200) {
+  echo "Success!";
+}
+```
+
+### 3. Upload File
+
+```
+$filePath = "path/to/document/pdf/txt;
+$url = 'http://localhost:8000/upload/file/';
+$params = [
+     "language" => "en",
+     "user_id" => "Sigfrido",
+     "extra_data_custom_code" => "123456"
+ ];
+
+$postData = [
+  'document_file' => new CURLFile($filePath, 'application/pdf', basename($filePath)),
+  'metadata_json' => json_encode($params)
+];
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+  'accept: application/json'
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_VERBOSE, false);
+$response = curl_exec($ch);
+if (curl_errno($ch)) {
+  $error_msg = curl_error($ch);
+  curl_close($ch);
+  echo "Fail!";
+  die();
+}
+$response = json_decode($response, true);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if($response['status'] == "success" && $httpCode == 200) {
+  echo "Success!";
+}
+```
+
+### 4. Ask a Question (for Sigfrido's text and with a context from ChromaDB of 10 entries)
+```
+ $params = [
+     "query" => "Prompt query for metaRAG extraction",
+     "query_metadata_filter" => [
+         "language" => "en",
+         "user_id" => "Sigfrido"
+     ],
+     "n_results_for_context" => 10
+ ];
+$postdata_to_be_sended = json_encode($params, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'http://localhost:8000/ask/');
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $postdata_to_be_sended);
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+
+$result_ask = curl_exec($ch);
+```
 
 ## Project Structure
 
