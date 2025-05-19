@@ -14,7 +14,7 @@ The **metaRAG** implementation make metadata core in the process: by integrating
 
 Beyond mandatory fields like `user_id` (essential for data isolation) and `language` (for language-specific model selection), the system allows adding *any* custom key-value pairs to describe your data: be it `topic`, `project`, `department`, `date`, `source_type`, `internal_code` or any other attribute relevant to your use case. This custom metadata isn't merely descriptive: it's actively used for filtering during the retrieval phase.
 
-This use of metadata enables **precise contextual filterinimport chromadb**. When the user asks a query through the API, it provides not only the query but also a metadata filter: the system then performs a vector search *only* within the subset of documents (or document chunks) that precisely match *all* criteria in your filter. This guarantees that:
+This use of metadata enables **precise contextual filterinig**. When the user asks a query through the API, it provides not only the query but also a metadata filter: the system then performs a vector search *only* within the subset of documents (or document chunks) that precisely match *all* criteria in your filter. This guarantees that:
 
 1.  **Data Segregation**: User data remains separate and inaccessible to queries from other users unless explicitly allowed by the filter.
 2.  **Targeted Retrieval**: Queries are scoped to the exact set of relevant documents defined.
