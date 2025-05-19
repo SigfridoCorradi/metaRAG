@@ -149,7 +149,8 @@ class metaRAG:
         try:
             self.chroma_client = chromadb.PersistentClient(path=self.chroma_path)
             self.collection = self.chroma_client.get_or_create_collection(
-                name=self.collection_name
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"}
             )
             print(f"[metaRAG INFO] ChromaDB collection '{self.collection_name}' loaded/created at '{self.chroma_path}'. Count: {self.collection.count()}")
         except Exception as e:
