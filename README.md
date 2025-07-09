@@ -81,7 +81,7 @@ The metaRAG implementation has the following key points:
              *   Next, ChromaDB takes this query vector and **compares its direction to the direction of every text chunk vector** it has stored from the ingestion phase by calculating the cosine of the angle between the query vector and each chunk vector (while it might not literally compare against every single vector in a massive dataset due to the use of efficient ANN -Approximate Nearest Neighbor- search algorithms).
              *   The text chunks whose vectors have the best cosine distance scores (closest to 0) with the query vector are the most semantically relevant to the user's query.
          
-         5.  **Why is it useful for metaRAG and a RAG system in general?**
+         4.  **Why is it useful for metaRAG and a RAG system in general?**
              *   Example: if the user queries "best ways to travel quickly in a city" and a document chunk talks about "efficient urban transportation methods like subways and electric scooters," traditional keyword search might miss the strong connection.
              *   However, because the embeddings capture *semantic meaning*, the vector for "best ways to travel quickly in a city" will likely point in a very similar direction to the vector for "efficient urban transportation methods." Cosine distance will pick up on this high directional similarity, even though the exact words are different.
         
